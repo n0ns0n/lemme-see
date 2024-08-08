@@ -3,6 +3,9 @@ import sys
 import json
 import requests
 
+from .shodanapi import ShodanApi
+
+
 def search_dict(key2search, dictionary):
     if isinstance(dictionary, dict):
         for key, value in dictionary.items():
@@ -17,16 +20,17 @@ def search_dict(key2search, dictionary):
                         yield result
 
 def process_subdomains(domain, subdomains):
-    sorted_unique = []
+    sorted_unique = set()
     for subdomain in subdomains:
         if subdomain.endswith(domain) and subdomain not in sorted_unique:   
             subdomain = re.sub(r'^[\.\*]\.?', '', subdomain)
-            sorted_unique.append(subdomain.strip())
+            sorted_unique.add(subdomain.strip())
 
-    return sorted(sorted_unique)
+    return sorted(list(sorted_unique))
 
 
-def get_subdomains(domain, get_request):
+def get_subdomains(domain, get_request, ApiKey):
+    shodan = ShodanApi(ApiKey)
     subdomains = []
     headers = {"User-Agent":"Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.1"}
     apis = {
@@ -35,7 +39,9 @@ def get_subdomains(domain, get_request):
         "threatc" : f'http://ci-www.threatcrowd.org/searchApi/v2/domain/report/?domain={domain}'
     }
     print(f"[+] Checking for subdomains for target: {domain}")
+    subdomains += shodan.getSubdomains(domain)
     for api_name, api_url in apis.items():
+        print(f"[+] Getting subdomains from: {api_name}")
         api_response = json.loads(get_request(api_url, headers=headers).text)
         if api_name == "urlscan":
             subdomains += search_dict("domain", api_response)
