@@ -9,7 +9,7 @@ class ShodanApi:
     def __init__(self, ApiKey):
         self.api = shodan.Shodan(ApiKey)
         try:
-            print(f"[+] Checking Shodan connection")
+            print(f"[+] Checking shodan API access")
             info = self.api.info()
         except shodan.APIError as e:
             print(f"[!] Error: {e}")
