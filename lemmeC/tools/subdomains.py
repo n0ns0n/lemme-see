@@ -39,7 +39,9 @@ def get_subdomains(domain, get_request, ShodanApiKeys):
         "threatc" : f'http://ci-www.threatcrowd.org/searchApi/v2/domain/report/?domain={domain}'
     }
     print(f"[+] Checking for subdomains for target: {domain}")
-    subdomains += shodan.getShodan("subdomains")
+    shodan_results = shodan.getShodan("subdomains")
+    if shodan_results:
+        subdomains += shodan_results
     for api_name, api_url in apis.items():
         print(f"[+] Getting subdomains from: {api_name}")
         api_response = json.loads(get_request(api_url, headers=headers).text)

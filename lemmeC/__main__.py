@@ -9,7 +9,7 @@ import datetime
 from lemmeC.tools.shodanapi import ShodanApi
 from lemmeC.tools.screenshot import Screenshoter
 from lemmeC.tools.subdomains import get_subdomains 
-from lemmeC.tools.network import get_addresses, internetdb
+from lemmeC.tools.network import get_addresses
 
 from lemmeC.utils.banner import banner
 from lemmeC.utils.utilities import Checks, Filesystem
@@ -25,6 +25,7 @@ class DomainLookup:
 
     def lookup(self, options):
         self.target = options["target"] # TODO: add check for valid domain
+        self.is_active = options["active"]
         self.lemme_see_results["target"] = self.target
         self.lemme_see_results["time"] = self.report_time.strftime("%c")
         self.lemme_see_results["addresses"] = []
@@ -34,7 +35,6 @@ class DomainLookup:
         shodan = ShodanApi(SHODAN_API_KEYS, self.target)
         shodan_results = shodan.getShodan("domain")
         if shodan_results:
-            print("got shodan results")
             self.lemme_see_results["os"] = shodan_results["os"]
             self.lemme_see_results["ports"] = shodan_results["ports"]
             self.lemme_see_results["domains"] = shodan_results["domains"]
@@ -43,7 +43,9 @@ class DomainLookup:
             self.lemme_see_results["addresses"] = shodan_results["addresses"]
 
         ####################### MISC #######################
-        self.lemme_see_results["addresses"] += get_addresses(self.target)
+        if self.is_active:
+            self.lemme_see_results["addresses"] += get_addresses(self.target)
+
         self.lemme_see_results["subdomains"] = get_subdomains(self.target, self.get_request, SHODAN_API_KEYS)
         self.lemme_see_results["subdomain_count"] = str(len(self.lemme_see_results["subdomains"]))
     
@@ -61,21 +63,27 @@ class IpLookup:
         self.lemme_see_results["time"] = self.report_time.strftime("%c")
         print(f"[+] Lemme see IP lookup on target: {self.target}")
 
+        ####################### SHODAN #######################
         shodan = ShodanApi(SHODAN_API_KEYS, self.target)
         shodan_results = shodan.getShodan("ip")
+        if "detail" in shodan_results:
+            self.lemme_see_results["detail"] = shodan_results["detail"]
+        elif "idb" in list(shodan_results.keys()):
+            self.lemme_see_results["tags"] = shodan_results["tags"]
+            self.lemme_see_results["ports"] = shodan_results["ports"]
+            self.lemme_see_results["hostnames"] = shodan_results["hostnames"]
+        else:
+            self.lemme_see_results["os"] = shodan_results["os"]
+            self.lemme_see_results["tags"] = shodan_results["tags"]
+            self.lemme_see_results["ports"] = shodan_results["ports"]
+            self.lemme_see_results["domains"] = shodan_results["domains"]
+            self.lemme_see_results["products"] = shodan_results["products"]
+            self.lemme_see_results["http_waf"] = shodan_results["http_waf"]
+            self.lemme_see_results["http_host"] = shodan_results["http_host"]
+            self.lemme_see_results["hostnames"] = shodan_results["hostnames"]
+            self.lemme_see_results["http_status"] = shodan_results["http_status"]
+            self.lemme_see_results["http_server"] = shodan_results["http_server"]
 
-
-        ####################### SHODAN #######################
-        self.lemme_see_results["os"] = shodan_results["os"]
-        self.lemme_see_results["tags"] = shodan_results["tags"]
-        self.lemme_see_results["ports"] = shodan_results["ports"]
-        self.lemme_see_results["domains"] = shodan_results["domains"]
-        self.lemme_see_results["products"] = shodan_results["products"]
-        self.lemme_see_results["http_waf"] = shodan_results["http_waf"]
-        self.lemme_see_results["http_host"] = shodan_results["http_host"]
-        self.lemme_see_results["hostnames"] = shodan_results["hostnames"]
-        self.lemme_see_results["http_status"] = shodan_results["http_status"]
-        self.lemme_see_results["http_server"] = shodan_results["http_server"]
 
         return self.lemme_see_results
 

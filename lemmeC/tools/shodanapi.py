@@ -1,3 +1,4 @@
+import requests
 import shodan
 import time
 import json
@@ -24,12 +25,24 @@ class ShodanApi:
         self.s_http_status = set()
         self.s_http_server = set()
 
-    def getShodanIdb(self, asset):
-        if asset == "ip":
-            print("no api keys, using idb and asset is ", asset)
-        elif asset == "subdomains":
-            print("no api keys, using idb and asset is ", asset)
-        return True
+    def getShodanIdb(self):
+        print(f"[+](Shodan:InternetDB) Querying InternetDB for IP information.")
+        url = f"https://internetdb.shodan.io/{self.target}"
+        idb_results = requests.get(url).json()
+        if "detail" not in idb_results:
+            self.s_hostnames.update(idb_results["hostnames"])
+            self.s_ports.update(idb_results["ports"])
+            self.s_tags.update(idb_results["tags"])
+
+            shodan_results = {
+                "idb"       : True,
+                "tags"      : list(self.s_tags),
+                "ports"     : list(self.s_ports),
+                "hostnames" : list(self.s_hostnames),
+            }
+            return shodan_results
+        else:
+            return idb_results
     
     def getShodan(self, asset):
         current_key = 0
@@ -37,11 +50,10 @@ class ShodanApi:
         while True:
             try:
                 if not self.api_keys or current_key > len(self.api_keys) -1:
-                    if asset == "domain":
+                    if asset == "domain" or asset == "subdomains":
                         return False
                     else:
-                        self.getShodanIdb(asset)
-                        sys.exit()
+                        return self.getShodanIdb()
                 else:
                     self.api = shodan.Shodan(self.api_keys[current_key])
                     info = self.api.info()
