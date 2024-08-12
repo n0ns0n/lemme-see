@@ -29,8 +29,8 @@ def process_subdomains(domain, subdomains):
     return sorted(list(sorted_unique))
 
 
-def get_subdomains(domain, get_request, ApiKey):
-    shodan = ShodanApi(ApiKey)
+def get_subdomains(domain, get_request, ShodanApiKeys):
+    shodan = ShodanApi(ShodanApiKeys, domain)
     subdomains = []
     headers = {"User-Agent":"Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.1"}
     apis = {
@@ -39,7 +39,7 @@ def get_subdomains(domain, get_request, ApiKey):
         "threatc" : f'http://ci-www.threatcrowd.org/searchApi/v2/domain/report/?domain={domain}'
     }
     print(f"[+] Checking for subdomains for target: {domain}")
-    subdomains += shodan.getSubdomains(domain)
+    subdomains += shodan.getShodan("subdomains")
     for api_name, api_url in apis.items():
         print(f"[+] Getting subdomains from: {api_name}")
         api_response = json.loads(get_request(api_url, headers=headers).text)

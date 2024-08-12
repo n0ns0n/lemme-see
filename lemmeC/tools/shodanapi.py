@@ -1,4 +1,5 @@
 import shodan
+import time
 import json
 import yaml
 import sys
@@ -6,15 +7,10 @@ import os
 
 class ShodanApi:
 
-    def __init__(self, ApiKey):
-        self.api = shodan.Shodan(ApiKey)
-        try:
-            print(f"[+] Checking shodan API access")
-            info = self.api.info()
-        except shodan.APIError as e:
-            print(f"[!] Error: {e}")
-            sys.exit()
-
+    def __init__(self, api_keys, target):
+        #self.api = shodan.Shodan(ApiKey)
+        self.target = target
+        self.api_keys = api_keys
         self.s_os          = set()
         self.s_tags        = set()
         self.s_ports       = set()
@@ -27,11 +23,45 @@ class ShodanApi:
         self.s_subdomains  = set()
         self.s_http_status = set()
         self.s_http_server = set()
+
+    def getShodanIdb(self, asset):
+        if asset == "ip":
+            print("no api keys, using idb and asset is ", asset)
+        elif asset == "subdomains":
+            print("no api keys, using idb and asset is ", asset)
+        return True
     
-    def getIpInfo(self, target):
+    def getShodan(self, asset):
+        current_key = 0
+        print(f"[+](Shodan) Checking shodan API access")
+        while True:
+            try:
+                if not self.api_keys or current_key > len(self.api_keys) -1:
+                    if asset == "domain":
+                        return False
+                    else:
+                        self.getShodanIdb(asset)
+                        sys.exit()
+                else:
+                    self.api = shodan.Shodan(self.api_keys[current_key])
+                    info = self.api.info()
+                    if asset == "ip":
+                        print(f"[+](Shodan) Quering shodan for IP information")
+                        return self.getIpInfo()
+                    elif asset == "subdomains":
+                        print(f"[+] Getting subdomains from: Shodan")
+                        return self.getSubdomains()
+                    elif asset == "domain":
+                        print(f"[+](Shodan) Quering shodan for domain information")
+                        return self.getDomainInfo()
+            except shodan.APIError as api_error:
+                current_key += 1
+                time.sleep(1)
+                print(f"[!](Shodan) Error: {api_error.value}")
+
+    def getIpInfo(self):
         # Add check for valid IP
-        print(f"[+] Quering shodan for IP information")
-        api_results = self.api.host(target)
+        api_results = self.api.host(self.target)
         self.s_tags.update(api_results["tags"])
         self.s_domains.update(api_results["domains"])
         self.s_hostnames.update(api_results["hostnames"])
@@ -65,9 +95,8 @@ class ShodanApi:
 
         return shodan_results
 
-    def getDomainInfo(self, target):
-        print(f"[+] Quering shodan for domain information")
-        api_results = self.api.search(f"hostname:{target}")["matches"]
+    def getDomainInfo(self):
+        api_results = self.api.search(f"hostname:{self.target}")["matches"]
         for match in api_results:
             try:
                 self.s_ports.add(match["port"])
@@ -90,8 +119,7 @@ class ShodanApi:
 
         return shodan_results
 
-    def getSubdomains(self, target):
-        print(f"[+] Getting subdomains from: Shodan")
-        api_results = self.api.dns.domain_info(target)
+    def getSubdomains(self):
+        api_results = self.api.dns.domain_info(self.target)
         self.s_subdomains.update(api_results["subdomains"])
         return list(self.s_subdomains)
